@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sokcho Vibe</title>
+    <title>300❤️</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module">
@@ -22,124 +22,123 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const scheduleRef = ref(db, 'schedule');
-        const candidateRef = ref(db, 'candidates');
+        const baseRef = ref(db, 'trip_data');
 
-        // --- 기능 로직 ---
+        // 상태 관리
+        window.currentDay = 1;
+        window.currentMainTab = 'schedule';
+
+        // 데이터 추가 (소요시간 필드 추가)
         window.addNewItem = function() {
-            const currentTab = document.getElementById('schedule-view').classList.contains('hidden') ? 'candidate' : 'schedule';
-            const targetRef = currentTab === 'schedule' ? scheduleRef : candidateRef;
-            const newItemRef = push(targetRef);
-            set(newItemRef, {
-                title: currentTab === 'schedule' ? '새 일정' : '새 장소',
-                time: '00:00',
-                memo: '',
-                link: '',
-                done: false,
-                timestamp: Date.now()
+            if (window.currentMainTab === 'schedule') {
+                const dayRef = ref(db, `schedule/day${window.currentDay}`);
+                push(dayRef, { title: '새 일정', time: '00:00', duration: '', memo: '', done: false });
+            } else {
+                push(ref(db, 'candidates'), { title: '새 후보지', link: '', memo: '' });
+            }
+        };
+
+        // 시간 입력 자동 포맷팅 (숫자만, 자동 콜론)
+        window.formatTime = function(input, id, day) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if (val.length > 4) val = val.slice(0, 4);
+            if (val.length >= 3) {
+                val = val.slice(0, 2) + ':' + val.slice(2);
+            }
+            input.value = val;
+            if (val.length === 5) updateItem(id, 'time', val, `schedule/day${day}`);
+        };
+
+        window.updateItem = (id, field, value, path) => {
+            update(ref(db, `${path}/${id}`), { [field]: value });
+        };
+
+        window.deleteItem = (id, path) => {
+            if(confirm('삭제할까요?')) remove(ref(db, `${path}/${id}`));
+        };
+
+        // 렌더링 및 자동 정렬 (onValue 내에서 정렬 로직 포함)
+        const renderSchedule = (day) => {
+            onValue(ref(db, `schedule/day${day}`), (snapshot) => {
+                const data = snapshot.val();
+                const container = document.getElementById('list-container');
+                if (window.currentDay !== day || window.currentMainTab !== 'schedule') return;
+                
+                container.innerHTML = '';
+                if (data) {
+                    // 시간순 정렬
+                    const sortedKeys = Object.keys(data).sort((a, b) => data[a].time.localeCompare(data[b].time));
+                    sortedKeys.forEach(key => {
+                        const item = data[key];
+                        container.innerHTML += `
+                            <div class="ios-card p-4 space-y-2 ${item.done ? 'done' : ''}">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-circle-minus delete-btn text-red-500 hidden" onclick="deleteItem('${key}', 'schedule/day${day}')"></i>
+                                    <input type="checkbox" class="check-box w-5 h-5 accent-pink-500" ${item.done ? 'checked' : ''} onclick="updateItem('${key}', 'done', ${!item.done}, 'schedule/day${day}')">
+                                    <input type="text" value="${item.title}" class="font-bold text-lg flex-1 bg-transparent outline-none" onchange="updateItem('${key}', 'title', this.value, 'schedule/day${day}')">
+                                    <input type="text" value="${item.time}" class="w-14 text-sm text-pink-500 font-mono text-right bg-transparent outline-none" placeholder="00:00" oninput="formatTime(this, '${key}', ${day})">
+                                </div>
+                                <div class="flex items-center gap-2 ml-8 text-[11px] text-gray-400 font-medium">
+                                    <i class="fa-regular fa-clock"></i>
+                                    <input type="text" value="${item.duration || ''}" class="bg-transparent outline-none w-full" placeholder="소요 시간 (예: 1시간)" onchange="updateItem('${key}', 'duration', this.value, 'schedule/day${day}')">
+                                </div>
+                                <textarea class="text-sm text-gray-500 w-full bg-transparent outline-none ml-8" placeholder="상세 메모..." onchange="updateItem('${key}', 'memo', this.value, 'schedule/day${day}')">${item.memo || ''}</textarea>
+                            </div>`;
+                    });
+                }
             });
         };
 
-        window.updateItem = (id, field, value, tab) => {
-            const itemRef = ref(db, `${tab}/${id}`);
-            update(itemRef, { [field]: value });
+        window.switchDay = (day) => {
+            window.currentDay = day;
+            document.getElementById('day1-btn').className = day === 1 ? 'px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-bold' : 'px-4 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-bold';
+            document.getElementById('day2-btn').className = day === 2 ? 'px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-bold' : 'px-4 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-bold';
+            renderSchedule(day);
         };
 
-        window.deleteItem = (id, tab) => {
-            if(confirm('삭제하시겠습니까?')) remove(ref(db, `${tab}/${id}`));
+        window.switchMainTab = (tab) => {
+            window.currentMainTab = tab;
+            document.getElementById('schedule-view').classList.toggle('hidden', tab !== 'schedule');
+            document.getElementById('candidate-view').classList.toggle('hidden', tab !== 'candidate');
+            document.getElementById('day-selector').classList.toggle('hidden', tab !== 'schedule');
+            if(tab === 'schedule') switchDay(window.currentDay);
         };
 
-        window.toggleDone = (id, currentStatus) => {
-            update(ref(db, `schedule/${id}`), { done: !currentStatus });
-        };
-
-        // 실시간 데이터 감시 및 렌더링
-        onValue(scheduleRef, (snapshot) => {
-            const data = snapshot.val();
-            const container = document.getElementById('list-container');
-            container.innerHTML = '';
-            if (data) {
-                Object.keys(data).forEach(key => {
-                    const item = data[key];
-                    container.innerHTML += `
-                        <div class="ios-card p-4 space-y-2 ${item.done ? 'done' : ''}">
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-circle-minus delete-btn text-red-500 hidden" onclick="deleteItem('${key}', 'schedule')"></i>
-                                <input type="checkbox" class="check-box w-5 h-5 accent-blue-500" ${item.done ? 'checked' : ''} onclick="toggleDone('${key}', ${item.done})">
-                                <input type="text" value="${item.title}" class="font-bold text-lg flex-1 bg-transparent outline-none" onchange="updateItem('${key}', 'title', this.value, 'schedule')">
-                                <input type="text" value="${item.time}" class="w-12 text-xs text-blue-500 font-mono text-right bg-transparent outline-none" onchange="updateItem('${key}', 'time', this.value, 'schedule')">
-                            </div>
-                            <textarea class="text-sm text-gray-500 w-full bg-transparent outline-none ml-8" placeholder="메모..." onchange="updateItem('${key}', 'memo', this.value, 'schedule')">${item.memo}</textarea>
-                        </div>`;
-                });
-            }
-        });
-
-        onValue(candidateRef, (snapshot) => {
-            const data = snapshot.val();
-            const container = document.getElementById('candidate-list');
-            container.innerHTML = '';
-            if (data) {
-                Object.keys(data).forEach(key => {
-                    const item = data[key];
-                    container.innerHTML += `
-                        <div class="ios-card p-4 space-y-2">
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-circle-minus delete-btn text-red-500 hidden" onclick="deleteItem('${key}', 'candidates')"></i>
-                                <input type="text" value="${item.title}" class="font-bold text-lg flex-1 bg-transparent outline-none" onchange="updateItem('${key}', 'title', this.value, 'candidates')" placeholder="장소 이름">
-                                <i class="fa-solid fa-location-arrow text-blue-500" onclick="window.open('${item.link}', '_blank')"></i>
-                            </div>
-                            <input type="text" value="${item.link}" class="text-[10px] text-blue-400 w-full bg-transparent outline-none" placeholder="네이버 플레이스 링크 붙여넣기" onchange="updateItem('${key}', 'link', this.value, 'candidates')">
-                        </div>`;
-                });
-            }
-        });
-
-        window.toggleEditMode = () => {
-            const btns = document.querySelectorAll('.delete-btn');
-            const checks = document.querySelectorAll('.check-box');
-            const isEditing = btns[0]?.classList.contains('hidden');
-            btns.forEach(b => b.classList.toggle('hidden'));
-            checks.forEach(c => c.classList.toggle('hidden'));
-            document.getElementById('edit-btn').innerText = isEditing ? 'Done' : 'Edit';
-        };
-
-        window.switchTab = (tab) => {
-            const sched = document.getElementById('schedule-view');
-            const candi = document.getElementById('candidate-view');
-            const navBtns = document.querySelectorAll('nav button');
-            if(tab === 'schedule') {
-                sched.classList.remove('hidden'); candi.classList.add('hidden');
-                navBtns[0].classList.add('text-blue-500'); navBtns[1].classList.remove('text-blue-500');
-            } else {
-                sched.classList.add('hidden'); candi.classList.remove('hidden');
-                navBtns[1].classList.add('text-blue-500'); navBtns[0].classList.remove('text-blue-500');
-            }
-        };
+        // 초기 실행
+        switchDay(1);
     </script>
     <style>
-        :root { --bg: #ffffff; --card: #f2f2f7; --text: #000000; --accent: #007aff; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --accent: #0a84ff; } }
+        :root { --bg: #ffffff; --card: #f2f2f7; --text: #000000; --accent: #ff2d55; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --accent: #ff375f; } }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-        .ios-card { background-color: var(--card); border-radius: 16px; border: 0.5px solid rgba(128,128,128,0.2); }
+        .ios-card { background-color: var(--card); border-radius: 18px; border: 0.5px solid rgba(128,128,128,0.1); }
         .done { opacity: 0.3; filter: grayscale(1); }
-        .fab { position: fixed; bottom: 100px; right: 25px; width: 60px; height: 60px; background: var(--accent); border-radius: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 50; }
+        .fab { position: fixed; bottom: 100px; right: 25px; width: 60px; height: 60px; background: var(--accent); border-radius: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(255,45,85,0.3); z-index: 50; }
+        .hidden { display: none; }
     </style>
 </head>
 <body class="pb-32">
-    <header class="p-6 pt-12 flex justify-between items-end">
-        <div><h1 class="text-3xl font-extrabold tracking-tight">Sokcho Trip</h1><p class="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Realtime Sync</p></div>
-        <button id="edit-btn" onclick="toggleEditMode()" class="text-blue-500 text-sm font-semibold">Edit</button>
+    <header class="p-6 pt-12 flex justify-between items-start">
+        <div>
+            <h1 class="text-3xl font-black tracking-tighter">300❤️</h1>
+            <p class="text-gray-500 text-xs font-bold mt-1">아기뽀둥이랑 함께하는 속초여행</p>
+        </div>
+        <button id="edit-btn" onclick="const btns=document.querySelectorAll('.delete-btn'); btns.forEach(b=>b.classList.toggle('hidden')); this.innerText=this.innerText==='Edit'?'Done':'Edit'" class="text-pink-500 text-sm font-bold">Edit</button>
     </header>
 
+    <div id="day-selector" class="px-6 mb-6 flex gap-2">
+        <button id="day1-btn" onclick="switchDay(1)" class="px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-bold">Day 1</button>
+        <button id="day2-btn" onclick="switchDay(2)" class="px-4 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-bold">Day 2</button>
+    </div>
+
     <main id="schedule-view" class="px-5 space-y-4"><div id="list-container" class="space-y-3"></div></main>
-    <main id="candidate-view" class="hidden px-5 space-y-4"><div id="candidate-list" class="space-y-3"></div></main>
+    <main id="candidate-view" class="hidden px-5"><div id="candidate-list" class="space-y-3 text-center py-20 text-gray-500 text-sm">준비 중...</div></main>
 
     <div class="fab text-white text-2xl" onclick="addNewItem()"><i class="fa-solid fa-plus"></i></div>
 
     <nav class="fixed bottom-0 left-0 w-full bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 flex justify-around py-3 pb-8 z-40">
-        <button onclick="switchTab('schedule')" class="flex flex-col items-center gap-1 text-blue-500"><i class="fa-solid fa-calendar-days text-xl"></i><span class="text-[10px]">일정</span></button>
-        <button onclick="switchTab('candidate')" class="flex flex-col items-center gap-1 text-gray-400"><i class="fa-solid fa-map-location-dot text-xl"></i><span class="text-[10px]">방문후보</span></button>
+        <button onclick="switchMainTab('schedule')" class="flex flex-col items-center gap-1 text-pink-500"><i class="fa-solid fa-heart text-xl"></i><span class="text-[10px]">일정</span></button>
+        <button onclick="switchMainTab('candidate')" class="flex flex-col items-center gap-1 text-gray-400"><i class="fa-solid fa-star text-xl"></i><span class="text-[10px]">후보</span></button>
     </nav>
 </body>
 </html>
