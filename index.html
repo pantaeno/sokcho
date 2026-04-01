@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>속초 1박 2일</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: -apple-system; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .done { opacity: 0.2; filter: grayscale(1); text-decoration: line-through; }
+    </style>
+</head>
+<body class="p-6 pb-20">
+    <header class="mb-10 pt-4 text-center">
+        <h1 class="text-3xl font-black tracking-tighter text-blue-500">SOKCHO <span class="text-white">2026</span></h1>
+        <p class="text-gray-500 text-xs font-mono tracking-widest mt-1">04.03 - 04.04</p>
+    </header>
+
+    <div class="space-y-8">
+        <section>
+            <h2 class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-4 ml-1">Day 01</h2>
+            <div class="space-y-3">
+                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
+                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <div>
+                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">17:15</div>
+                        <h3 class="font-bold text-base">UH FLAT 체크인</h3>
+                        <p class="text-gray-500 text-xs">터미널서 택시 10분, 짐 풀기</p>
+                    </div>
+                </div>
+                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
+                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <div>
+                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">17:40</div>
+                        <h3 class="font-bold text-base">서점 투어</h3>
+                        <p class="text-gray-500 text-xs">문우당/동아서점 (도보 10분)</p>
+                    </div>
+                </div>
+                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
+                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <div>
+                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">18:40</div>
+                        <h3 class="font-bold text-base">중앙시장</h3>
+                        <p class="text-gray-500 text-xs">저녁거리(순대 등) 구매</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-4 ml-1">Day 02</h2>
+            <div class="space-y-3">
+                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
+                    <div class="w-2 h-2 rounded-full bg-slate-700"></div>
+                    <div>
+                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">12:30</div>
+                        <h3 class="font-bold text-base text-gray-300">영금정 산책</h3>
+                        <p class="text-gray-500 text-xs text-gray-300">바다 위 정자 뷰 감상</p>
+                    </div>
+                </div>
+                <div class="glass p-5 rounded-3xl flex items-center gap-4 border-l-2 border-blue-500" onclick="this.classList.toggle('done')">
+                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <div>
+                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">14:30</div>
+                        <h3 class="font-bold text-base">카페 셜터 🚕</h3>
+                        <p class="text-blue-200 text-xs font-medium italic italic">영금정서 택시 12분 이동</p>
+                    </div>
+                </div>
+                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
+                    <div class="w-2 h-2 rounded-full bg-slate-700"></div>
+                    <div>
+                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">16:30</div>
+                        <h3 class="font-bold text-base">속초해수욕장</h3>
+                        <p class="text-gray-500 text-xs">카페 앞 해변 산책</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="mt-12 bg-zinc-900 p-5 rounded-3xl">
+        <textarea class="w-full bg-transparent text-sm text-gray-400 focus:outline-none min-h-[80px]" placeholder="터치하여 여행 메모를 남기세요."></textarea>
+    </div>
+    
+    <p class="mt-8 text-center text-[10px] text-gray-800 font-mono uppercase tracking-widest">Tap card to check done</p>
+</body>
+</html>
