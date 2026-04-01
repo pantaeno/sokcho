@@ -49,7 +49,7 @@
         };
 
         window.addNewItem = () => {
-            const path = state.mainTab === 'schedule' ? `schedule/day${state.currentDay}` : state.mainTab;
+            const path = state.mainTab === 'schedule' ? `schedule/day${state.currentDay}` : (state.mainTab === 'candidates' ? 'candidates' : 'checklist');
             const data = state.mainTab === 'checklist' ? { task: '새 할 일', done: false } : 
                          state.mainTab === 'candidates' ? { title: '새 후보지', link: '', memo: '' } :
                          { title: '새 일정', time: '12:00', duration: '', memo: '', done: false };
@@ -57,35 +57,56 @@
         };
 
         const listenData = () => {
+            // 일정 탭 리스너
             onValue(ref(db, `schedule/day${state.currentDay}`), (snap) => {
-                const container = document.getElementById('list-container');
                 if (state.mainTab !== 'schedule') return;
+                const container = document.getElementById('list-container');
                 const data = snap.val() || {};
-                const sorted = Object.keys(data).sort((a,b) => data[a].time.localeCompare(data[b].time));
+                const sorted = Object.keys(data).sort((a,b) => (data[a].time || "").localeCompare(data[b].time || ""));
                 container.innerHTML = sorted.map(key => `
                     <div class="ios-card p-4 space-y-2 ${data[key].done ? 'done' : ''}">
                         <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="confirm('삭제?') && remove(ref(db, 'schedule/day${state.currentDay}/${key}'))"></i>
+                            <i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="confirm('삭제할까요?') && remove(ref(db, 'schedule/day${state.currentDay}/${key}'))"></i>
                             <input type="checkbox" class="${state.isEditing ? 'hidden' : ''} w-5 h-5 accent-black" ${data[key].done ? 'checked' : ''} onclick="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {done: ${!data[key].done}})">
                             <input type="text" value="${data[key].title}" class="font-bold text-lg flex-1 bg-transparent outline-none" onchange="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {title: this.value})">
                             <input type="text" value="${data[key].time}" class="w-14 text-sm font-mono text-right bg-transparent" oninput="formatTime(this, '${key}', ${state.currentDay})">
                         </div>
-                        <div class="flex items-center gap-2 ml-8 text-[11px] text-gray-400 font-medium"><i class="fa-regular fa-clock"></i><input type="text" value="${data[key].duration || ''}" class="bg-transparent w-full outline-none" placeholder="소요시간" onchange="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {duration: this.value})"></div>
+                        <div class="flex items-center gap-2 ml-8 text-[11px] text-gray-400 font-medium">
+                            <i class="fa-regular fa-clock"></i>
+                            <input type="text" value="${data[key].duration || ''}" class="bg-transparent w-full outline-none" placeholder="소요시간" onchange="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {duration: this.value})">
+                        </div>
+                        <textarea class="text-sm text-gray-500 w-full bg-transparent outline-none ml-8 mt-1" placeholder="상세 메모를 입력하세요..." onchange="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {memo: this.value})">${data[key].memo || ''}</textarea>
                     </div>`).join('');
             });
 
+            // 후보군 탭 리스너
             onValue(ref(db, 'candidates'), (snap) => {
-                const container = document.getElementById('candidate-list');
                 if (state.mainTab !== 'candidates') return;
+                const container = document.getElementById('candidate-list');
                 const data = snap.val() || {};
-                container.innerHTML = Object.keys(data).map(key => `<div class="ios-card p-4 flex items-center gap-3"><i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="remove(ref(db, 'candidates/${key}'))"></i><input type="text" value="${data[key].title}" class="font-bold flex-1 bg-transparent outline-none" onchange="update(ref(db, 'candidates/${key}'), {title: this.value})"><i class="fa-solid fa-location-arrow text-gray-400" onclick="window.open('${data[key].link}', '_blank')"></i></div>`).join('');
+                container.innerHTML = Object.keys(data).map(key => `
+                    <div class="ios-card p-4 space-y-2">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="confirm('삭제?') && remove(ref(db, 'candidates/${key}'))"></i>
+                            <input type="text" value="${data[key].title}" class="font-bold flex-1 bg-transparent outline-none" onchange="update(ref(db, 'candidates/${key}'), {title: this.value})" placeholder="장소명">
+                            <i class="fa-solid fa-location-arrow text-gray-400 ${data[key].link ? 'text-black' : ''}" onclick="if('${data[key].link}') window.open('${data[key].link}', '_blank'); else alert('링크가 없습니다.')"></i>
+                        </div>
+                        <input type="text" value="${data[key].link || ''}" class="text-[10px] text-blue-500 w-full bg-transparent outline-none" placeholder="네이버 지도 링크 붙여넣기" onchange="update(ref(db, 'candidates/${key}'), {link: this.value})">
+                        <input type="text" value="${data[key].memo || ''}" class="text-xs text-gray-400 w-full bg-transparent outline-none" placeholder="메모" onchange="update(ref(db, 'candidates/${key}'), {memo: this.value})">
+                    </div>`).join('');
             });
 
+            // 체크리스트 탭 리스너
             onValue(ref(db, 'checklist'), (snap) => {
-                const container = document.getElementById('checklist-container');
                 if (state.mainTab !== 'checklist') return;
+                const container = document.getElementById('checklist-container');
                 const data = snap.val() || {};
-                container.innerHTML = Object.keys(data).map(key => `<div class="ios-card p-4 flex items-center gap-3 ${data[key].done ? 'done' : ''}"><i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="remove(ref(db, 'checklist/${key}'))"></i><input type="checkbox" class="w-5 h-5 accent-black" ${data[key].done ? 'checked' : ''} onclick="update(ref(db, 'checklist/${key}'), {done: ${!data[key].done}})"> <input type="text" value="${data[key].task}" class="flex-1 bg-transparent outline-none" onchange="update(ref(db, 'checklist/${key}'), {task: this.value})"></div>`).join('');
+                container.innerHTML = Object.keys(data).map(key => `
+                    <div class="ios-card p-4 flex items-center gap-3 ${data[key].done ? 'done' : ''}">
+                        <i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="confirm('삭제?') && remove(ref(db, 'checklist/${key}'))"></i>
+                        <input type="checkbox" class="w-5 h-5 accent-black" ${data[key].done ? 'checked' : ''} onclick="update(ref(db, 'checklist/${key}'), {done: ${!data[key].done}})"> 
+                        <input type="text" value="${data[key].task}" class="flex-1 bg-transparent outline-none" onchange="update(ref(db, 'checklist/${key}'), {task: this.value})">
+                    </div>`).join('');
             });
         };
 
@@ -95,7 +116,8 @@
             document.getElementById(`${tab}-view`).classList.remove('hidden');
             document.getElementById('day-selector').classList.toggle('hidden', tab !== 'schedule');
             document.querySelectorAll('nav button').forEach(b => b.classList.replace('text-black', 'text-gray-400'));
-            event.currentTarget.classList.replace('text-gray-400', 'text-black');
+            const currentBtn = Array.from(document.querySelectorAll('nav button')).find(b => b.innerText.includes(tab === 'schedule' ? '일정' : (tab === 'candidates' ? '후보' : '체크')));
+            if(currentBtn) currentBtn.classList.replace('text-gray-400', 'text-black');
             listenData();
         };
 
@@ -113,7 +135,7 @@
         @media (prefers-color-scheme: dark) { :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; } }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
         .ios-card { background-color: var(--card); border-radius: 20px; border: 0.5px solid rgba(128,128,128,0.1); transition: transform 0.1s; }
-        .ios-card:active { transform: scale(0.98); opacity: 0.8; }
+        .ios-card:active { transform: scale(0.99); opacity: 0.9; }
         .day-btn { border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(128,128,128,0.1); padding: 6px 16px; transition: 0.2s; }
         .day-btn.active { background: var(--text); color: var(--bg); }
         .done { opacity: 0.2; filter: grayscale(1); }
@@ -121,6 +143,7 @@
         .fab:active { transform: scale(0.9); }
         .weather-chip { background: var(--card); border-radius: 15px; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; border: 0.5px solid rgba(128,128,128,0.1); }
         .hidden { display: none; }
+        textarea { resize: none; border: none; height: auto; min-height: 20px; }
     </style>
 </head>
 <body class="pb-32">
