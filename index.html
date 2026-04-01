@@ -22,123 +22,140 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const baseRef = ref(db, 'trip_data');
 
-        // 상태 관리
-        window.currentDay = 1;
-        window.currentMainTab = 'schedule';
+        window.state = { currentDay: 1, mainTab: 'schedule', isEditing: false };
 
-        // 데이터 추가 (소요시간 필드 추가)
-        window.addNewItem = function() {
-            if (window.currentMainTab === 'schedule') {
-                const dayRef = ref(db, `schedule/day${window.currentDay}`);
-                push(dayRef, { title: '새 일정', time: '00:00', duration: '', memo: '', done: false });
-            } else {
-                push(ref(db, 'candidates'), { title: '새 후보지', link: '', memo: '' });
-            }
-        };
-
-        // 시간 입력 자동 포맷팅 (숫자만, 자동 콜론)
-        window.formatTime = function(input, id, day) {
-            let val = input.value.replace(/[^0-9]/g, '');
-            if (val.length > 4) val = val.slice(0, 4);
-            if (val.length >= 3) {
-                val = val.slice(0, 2) + ':' + val.slice(2);
-            }
-            input.value = val;
-            if (val.length === 5) updateItem(id, 'time', val, `schedule/day${day}`);
-        };
-
-        window.updateItem = (id, field, value, path) => {
-            update(ref(db, `${path}/${id}`), { [field]: value });
-        };
-
-        window.deleteItem = (id, path) => {
-            if(confirm('삭제할까요?')) remove(ref(db, `${path}/${id}`));
-        };
-
-        // 렌더링 및 자동 정렬 (onValue 내에서 정렬 로직 포함)
-        const renderSchedule = (day) => {
-            onValue(ref(db, `schedule/day${day}`), (snapshot) => {
-                const data = snapshot.val();
-                const container = document.getElementById('list-container');
-                if (window.currentDay !== day || window.currentMainTab !== 'schedule') return;
+        // 속초 날씨 및 일출몰 API (무료 API 사용)
+        async function getSokchoWeather() {
+            try {
+                // 속초 좌표 (38.2070, 128.5911)
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=38.2070&longitude=128.5911&current=temperature_2m&daily=sunrise,sunset&timezone=Asia%2FSeoul`);
+                const data = await res.json();
                 
-                container.innerHTML = '';
-                if (data) {
-                    // 시간순 정렬
-                    const sortedKeys = Object.keys(data).sort((a, b) => data[a].time.localeCompare(data[b].time));
-                    sortedKeys.forEach(key => {
-                        const item = data[key];
-                        container.innerHTML += `
-                            <div class="ios-card p-4 space-y-2 ${item.done ? 'done' : ''}">
-                                <div class="flex items-center gap-3">
-                                    <i class="fa-solid fa-circle-minus delete-btn text-red-500 hidden" onclick="deleteItem('${key}', 'schedule/day${day}')"></i>
-                                    <input type="checkbox" class="check-box w-5 h-5 accent-pink-500" ${item.done ? 'checked' : ''} onclick="updateItem('${key}', 'done', ${!item.done}, 'schedule/day${day}')">
-                                    <input type="text" value="${item.title}" class="font-bold text-lg flex-1 bg-transparent outline-none" onchange="updateItem('${key}', 'title', this.value, 'schedule/day${day}')">
-                                    <input type="text" value="${item.time}" class="w-14 text-sm text-pink-500 font-mono text-right bg-transparent outline-none" placeholder="00:00" oninput="formatTime(this, '${key}', ${day})">
-                                </div>
-                                <div class="flex items-center gap-2 ml-8 text-[11px] text-gray-400 font-medium">
-                                    <i class="fa-regular fa-clock"></i>
-                                    <input type="text" value="${item.duration || ''}" class="bg-transparent outline-none w-full" placeholder="소요 시간 (예: 1시간)" onchange="updateItem('${key}', 'duration', this.value, 'schedule/day${day}')">
-                                </div>
-                                <textarea class="text-sm text-gray-500 w-full bg-transparent outline-none ml-8" placeholder="상세 메모..." onchange="updateItem('${key}', 'memo', this.value, 'schedule/day${day}')">${item.memo || ''}</textarea>
-                            </div>`;
-                    });
-                }
+                document.getElementById('current-temp').innerText = Math.round(data.current.temperature_2m) + '°';
+                document.getElementById('sunrise-time').innerText = data.daily.sunrise[0].split('T')[1];
+                document.getElementById('sunset-time').innerText = data.daily.sunset[0].split('T')[1];
+            } catch (e) { console.error("날씨 로딩 실패"); }
+        }
+
+        window.formatTime = (input, id, day) => {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if (val.length >= 4) {
+                let hh = parseInt(val.slice(0, 2));
+                let mm = parseInt(val.slice(2, 4));
+                if (hh > 23) hh = 23;
+                mm = Math.floor(mm / 10) * 10;
+                val = String(hh).padStart(2, '0') + ":" + String(mm).padStart(2, '0');
+                input.value = val;
+                update(ref(db, `schedule/day${day}/${id}`), { time: val });
+            } else { input.value = val; }
+        };
+
+        window.addNewItem = () => {
+            const path = state.mainTab === 'schedule' ? `schedule/day${state.currentDay}` : state.mainTab;
+            const data = state.mainTab === 'checklist' ? { task: '새 할 일', done: false } : 
+                         state.mainTab === 'candidates' ? { title: '새 후보지', link: '', memo: '' } :
+                         { title: '새 일정', time: '12:00', duration: '', memo: '', done: false };
+            push(ref(db, path), data);
+        };
+
+        const listenData = () => {
+            onValue(ref(db, `schedule/day${state.currentDay}`), (snap) => {
+                const container = document.getElementById('list-container');
+                if (state.mainTab !== 'schedule') return;
+                const data = snap.val() || {};
+                const sorted = Object.keys(data).sort((a,b) => data[a].time.localeCompare(data[b].time));
+                container.innerHTML = sorted.map(key => `
+                    <div class="ios-card p-4 space-y-2 ${data[key].done ? 'done' : ''}">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="confirm('삭제?') && remove(ref(db, 'schedule/day${state.currentDay}/${key}'))"></i>
+                            <input type="checkbox" class="${state.isEditing ? 'hidden' : ''} w-5 h-5 accent-black" ${data[key].done ? 'checked' : ''} onclick="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {done: ${!data[key].done}})">
+                            <input type="text" value="${data[key].title}" class="font-bold text-lg flex-1 bg-transparent outline-none" onchange="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {title: this.value})">
+                            <input type="text" value="${data[key].time}" class="w-14 text-sm font-mono text-right bg-transparent" oninput="formatTime(this, '${key}', ${state.currentDay})">
+                        </div>
+                        <div class="flex items-center gap-2 ml-8 text-[11px] text-gray-400 font-medium"><i class="fa-regular fa-clock"></i><input type="text" value="${data[key].duration || ''}" class="bg-transparent w-full outline-none" placeholder="소요시간" onchange="update(ref(db, 'schedule/day${state.currentDay}/${key}'), {duration: this.value})"></div>
+                    </div>`).join('');
+            });
+
+            onValue(ref(db, 'candidates'), (snap) => {
+                const container = document.getElementById('candidate-list');
+                if (state.mainTab !== 'candidates') return;
+                const data = snap.val() || {};
+                container.innerHTML = Object.keys(data).map(key => `<div class="ios-card p-4 flex items-center gap-3"><i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="remove(ref(db, 'candidates/${key}'))"></i><input type="text" value="${data[key].title}" class="font-bold flex-1 bg-transparent outline-none" onchange="update(ref(db, 'candidates/${key}'), {title: this.value})"><i class="fa-solid fa-location-arrow text-gray-400" onclick="window.open('${data[key].link}', '_blank')"></i></div>`).join('');
+            });
+
+            onValue(ref(db, 'checklist'), (snap) => {
+                const container = document.getElementById('checklist-container');
+                if (state.mainTab !== 'checklist') return;
+                const data = snap.val() || {};
+                container.innerHTML = Object.keys(data).map(key => `<div class="ios-card p-4 flex items-center gap-3 ${data[key].done ? 'done' : ''}"><i class="fa-solid fa-circle-minus text-red-500 ${state.isEditing ? '' : 'hidden'}" onclick="remove(ref(db, 'checklist/${key}'))"></i><input type="checkbox" class="w-5 h-5 accent-black" ${data[key].done ? 'checked' : ''} onclick="update(ref(db, 'checklist/${key}'), {done: ${!data[key].done}})"> <input type="text" value="${data[key].task}" class="flex-1 bg-transparent outline-none" onchange="update(ref(db, 'checklist/${key}'), {task: this.value})"></div>`).join('');
             });
         };
 
-        window.switchDay = (day) => {
-            window.currentDay = day;
-            document.getElementById('day1-btn').className = day === 1 ? 'px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-bold' : 'px-4 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-bold';
-            document.getElementById('day2-btn').className = day === 2 ? 'px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-bold' : 'px-4 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-bold';
-            renderSchedule(day);
-        };
-
         window.switchMainTab = (tab) => {
-            window.currentMainTab = tab;
-            document.getElementById('schedule-view').classList.toggle('hidden', tab !== 'schedule');
-            document.getElementById('candidate-view').classList.toggle('hidden', tab !== 'candidate');
+            state.mainTab = tab;
+            document.querySelectorAll('main').forEach(m => m.classList.add('hidden'));
+            document.getElementById(`${tab}-view`).classList.remove('hidden');
             document.getElementById('day-selector').classList.toggle('hidden', tab !== 'schedule');
-            if(tab === 'schedule') switchDay(window.currentDay);
+            document.querySelectorAll('nav button').forEach(b => b.classList.replace('text-black', 'text-gray-400'));
+            event.currentTarget.classList.replace('text-gray-400', 'text-black');
+            listenData();
         };
 
-        // 초기 실행
-        switchDay(1);
+        window.switchDay = (day) => {
+            state.currentDay = day;
+            document.querySelectorAll('#day-selector button').forEach((b, i) => b.className = (i+1 === day) ? 'day-btn active' : 'day-btn');
+            listenData();
+        };
+
+        getSokchoWeather();
+        listenData();
     </script>
     <style>
-        :root { --bg: #ffffff; --card: #f2f2f7; --text: #000000; --accent: #ff2d55; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --accent: #ff375f; } }
+        :root { --bg: #ffffff; --card: #f2f2f7; --text: #000000; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; } }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-        .ios-card { background-color: var(--card); border-radius: 18px; border: 0.5px solid rgba(128,128,128,0.1); }
-        .done { opacity: 0.3; filter: grayscale(1); }
-        .fab { position: fixed; bottom: 100px; right: 25px; width: 60px; height: 60px; background: var(--accent); border-radius: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(255,45,85,0.3); z-index: 50; }
+        .ios-card { background-color: var(--card); border-radius: 20px; border: 0.5px solid rgba(128,128,128,0.1); transition: transform 0.1s; }
+        .ios-card:active { transform: scale(0.98); opacity: 0.8; }
+        .day-btn { border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(128,128,128,0.1); padding: 6px 16px; transition: 0.2s; }
+        .day-btn.active { background: var(--text); color: var(--bg); }
+        .done { opacity: 0.2; filter: grayscale(1); }
+        .fab { position: fixed; bottom: 100px; right: 25px; width: 60px; height: 60px; background: var(--text); color: var(--bg); border-radius: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 50; }
+        .fab:active { transform: scale(0.9); }
+        .weather-chip { background: var(--card); border-radius: 15px; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; border: 0.5px solid rgba(128,128,128,0.1); }
         .hidden { display: none; }
     </style>
 </head>
 <body class="pb-32">
     <header class="p-6 pt-12 flex justify-between items-start">
-        <div>
-            <h1 class="text-3xl font-black tracking-tighter">300❤️</h1>
-            <p class="text-gray-500 text-xs font-bold mt-1">아기뽀둥이랑 함께하는 속초여행</p>
-        </div>
-        <button id="edit-btn" onclick="const btns=document.querySelectorAll('.delete-btn'); btns.forEach(b=>b.classList.toggle('hidden')); this.innerText=this.innerText==='Edit'?'Done':'Edit'" class="text-pink-500 text-sm font-bold">Edit</button>
+        <div><h1 class="text-3xl font-black tracking-tighter italic">300❤️</h1><p class="text-gray-400 text-[10px] font-bold mt-0.5 tracking-widest uppercase">Sokcho Moments</p></div>
+        <button onclick="state.isEditing=!state.isEditing; this.innerText=state.isEditing?'Done':'Edit'; listenData()" class="text-xs font-bold border border-current px-4 py-1.5 rounded-full active:opacity-50">Edit</button>
     </header>
 
+    <section class="px-6 mb-6 flex flex-col gap-3">
+        <div class="weather-chip w-fit active:scale-95 transition-transform" onclick="location.href='weather://'">
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-temperature-half text-gray-400"></i> <span id="current-temp">--°</span></div>
+            <div class="w-[1px] h-3 bg-gray-300"></div>
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-sun text-orange-400"></i> <span id="sunrise-time">--:--</span></div>
+            <div class="flex items-center gap-1.5"><i class="fa-solid fa-moon text-blue-400"></i> <span id="sunset-time">--:--</span></div>
+        </div>
+    </section>
+
     <div id="day-selector" class="px-6 mb-6 flex gap-2">
-        <button id="day1-btn" onclick="switchDay(1)" class="px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-bold">Day 1</button>
-        <button id="day2-btn" onclick="switchDay(2)" class="px-4 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-bold">Day 2</button>
+        <button onclick="switchDay(1)" class="day-btn active">Day 1</button>
+        <button onclick="switchDay(2)" class="day-btn">Day 2</button>
     </div>
 
-    <main id="schedule-view" class="px-5 space-y-4"><div id="list-container" class="space-y-3"></div></main>
-    <main id="candidate-view" class="hidden px-5"><div id="candidate-list" class="space-y-3 text-center py-20 text-gray-500 text-sm">준비 중...</div></main>
+    <main id="schedule-view" class="px-5 space-y-3"><div id="list-container" class="space-y-3"></div></main>
+    <main id="candidates-view" class="hidden px-5 space-y-3"><div id="candidate-list" class="space-y-3"></div></main>
+    <main id="checklist-view" class="hidden px-5 space-y-3"><div id="checklist-container" class="space-y-3"></div></main>
 
-    <div class="fab text-white text-2xl" onclick="addNewItem()"><i class="fa-solid fa-plus"></i></div>
+    <div class="fab" onclick="addNewItem()"><i class="fa-solid fa-plus"></i></div>
 
     <nav class="fixed bottom-0 left-0 w-full bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 flex justify-around py-3 pb-8 z-40">
-        <button onclick="switchMainTab('schedule')" class="flex flex-col items-center gap-1 text-pink-500"><i class="fa-solid fa-heart text-xl"></i><span class="text-[10px]">일정</span></button>
-        <button onclick="switchMainTab('candidate')" class="flex flex-col items-center gap-1 text-gray-400"><i class="fa-solid fa-star text-xl"></i><span class="text-[10px]">후보</span></button>
+        <button onclick="switchMainTab('schedule')" class="flex flex-col items-center gap-1 text-black"><i class="fa-solid fa-calendar-days text-xl"></i><span class="text-[10px] font-black">일정</span></button>
+        <button onclick="switchMainTab('candidates')" class="flex flex-col items-center gap-1 text-gray-400"><i class="fa-solid fa-map-location-dot text-xl"></i><span class="text-[10px] font-black">후보</span></button>
+        <button onclick="switchMainTab('checklist')" class="flex flex-col items-center gap-1 text-gray-400"><i class="fa-solid fa-list-check text-xl"></i><span class="text-[10px] font-black">체크</span></button>
     </nav>
 </body>
 </html>
