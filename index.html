@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>300❤️</title>
+    <title>속초여행 일정표</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module">
@@ -25,17 +25,14 @@
 
         window.state = { currentDay: 1, mainTab: 'schedule', isEditing: false };
 
-        // 속초 날씨 및 일출몰 API (무료 API 사용)
         async function getSokchoWeather() {
             try {
-                // 속초 좌표 (38.2070, 128.5911)
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=38.2070&longitude=128.5911&current=temperature_2m&daily=sunrise,sunset&timezone=Asia%2FSeoul`);
                 const data = await res.json();
-                
                 document.getElementById('current-temp').innerText = Math.round(data.current.temperature_2m) + '°';
                 document.getElementById('sunrise-time').innerText = data.daily.sunrise[0].split('T')[1];
                 document.getElementById('sunset-time').innerText = data.daily.sunset[0].split('T')[1];
-            } catch (e) { console.error("날씨 로딩 실패"); }
+            } catch (e) { console.error("Weather failed"); }
         }
 
         window.formatTime = (input, id, day) => {
@@ -128,7 +125,10 @@
 </head>
 <body class="pb-32">
     <header class="p-6 pt-12 flex justify-between items-start">
-        <div><h1 class="text-3xl font-black tracking-tighter italic">300❤️</h1><p class="text-gray-400 text-[10px] font-bold mt-0.5 tracking-widest uppercase">Sokcho Moments</p></div>
+        <div>
+            <h1 class="text-3xl font-bold tracking-tighter">속초여행 일정표</h1>
+            <p class="text-gray-500 text-xs font-bold mt-1">아기뽀둥이랑 함께하는 속초여행</p>
+        </div>
         <button onclick="state.isEditing=!state.isEditing; this.innerText=state.isEditing?'Done':'Edit'; listenData()" class="text-xs font-bold border border-current px-4 py-1.5 rounded-full active:opacity-50">Edit</button>
     </header>
 
