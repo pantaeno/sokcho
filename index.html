@@ -3,86 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>속초 1박 2일</title>
+    <title>Sokcho Vibe</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #000; color: #fff; font-family: -apple-system; -webkit-tap-highlight-color: transparent; }
-        .glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .done { opacity: 0.2; filter: grayscale(1); text-decoration: line-through; }
+        :root { --bg: #ffffff; --card: #f2f2f7; --text: #000000; --accent: #007aff; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --accent: #0a84ff; }
+        }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; transition: 0.3s; }
+        .ios-card { background-color: var(--card); border-radius: 12px; transition: 0.2s; border: 0.5px solid rgba(128,128,128,0.2); }
+        .tab-btn { color: #8e8e93; }
+        .tab-btn.active { color: var(--accent); }
+        .done { opacity: 0.3; filter: grayscale(1); }
+        input, textarea { background: transparent; border: none; color: inherit; width: 100%; outline: none; }
+        .fab { position: fixed; bottom: 100px; right: 20px; width: 56px; height: 56px; background: var(--accent); border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     </style>
 </head>
-<body class="p-6 pb-20">
-    <header class="mb-10 pt-4 text-center">
-        <h1 class="text-3xl font-black tracking-tighter text-blue-500">SOKCHO <span class="text-white">2026</span></h1>
-        <p class="text-gray-500 text-xs font-mono tracking-widest mt-1">04.03 - 04.04</p>
+<body class="pb-32">
+
+    <header class="p-6 pt-12 flex justify-between items-end">
+        <div>
+            <h1 id="page-title" class="text-3xl font-bold tracking-tight">Main Schedule</h1>
+            <p class="text-gray-500 text-sm font-medium uppercase tracking-widest mt-1">Sokcho 2026</p>
+        </div>
+        <div class="text-blue-500 text-sm font-semibold" onclick="toggleEditMode()">Edit</div>
     </header>
 
-    <div class="space-y-8">
-        <section>
-            <h2 class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-4 ml-1">Day 01</h2>
-            <div class="space-y-3">
-                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
-                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <div>
-                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">17:15</div>
-                        <h3 class="font-bold text-base">UH FLAT 체크인</h3>
-                        <p class="text-gray-500 text-xs">터미널서 택시 10분, 짐 풀기</p>
+    <main id="schedule-view" class="px-5 space-y-8">
+        <section class="space-y-3">
+            <h2 class="text-xs font-bold text-gray-500 uppercase ml-1">Day 01 - 04.03</h2>
+            <div id="day1-list" class="space-y-3">
+                <div class="ios-card p-4 space-y-2">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="w-5 h-5 accent-blue-500">
+                        <input type="text" value="UH FLAT 체크인" class="font-bold text-lg">
+                        <span class="text-xs text-blue-500 font-mono">17:15</span>
                     </div>
-                </div>
-                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
-                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <div>
-                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">17:40</div>
-                        <h3 class="font-bold text-base">서점 투어</h3>
-                        <p class="text-gray-500 text-xs">문우당/동아서점 (도보 10분)</p>
-                    </div>
-                </div>
-                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
-                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <div>
-                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">18:40</div>
-                        <h3 class="font-bold text-base">중앙시장</h3>
-                        <p class="text-gray-500 text-xs">저녁거리(순대 등) 구매</p>
-                    </div>
+                    <textarea class="text-sm text-gray-500 px-8" placeholder="메모를 입력하세요..."></textarea>
                 </div>
             </div>
         </section>
+    </main>
 
-        <section>
-            <h2 class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-4 ml-1">Day 02</h2>
-            <div class="space-y-3">
-                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
-                    <div class="w-2 h-2 rounded-full bg-slate-700"></div>
-                    <div>
-                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">12:30</div>
-                        <h3 class="font-bold text-base text-gray-300">영금정 산책</h3>
-                        <p class="text-gray-500 text-xs text-gray-300">바다 위 정자 뷰 감상</p>
-                    </div>
-                </div>
-                <div class="glass p-5 rounded-3xl flex items-center gap-4 border-l-2 border-blue-500" onclick="this.classList.toggle('done')">
-                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <div>
-                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">14:30</div>
-                        <h3 class="font-bold text-base">카페 셜터 🚕</h3>
-                        <p class="text-blue-200 text-xs font-medium italic italic">영금정서 택시 12분 이동</p>
-                    </div>
-                </div>
-                <div class="glass p-5 rounded-3xl flex items-center gap-4" onclick="this.classList.toggle('done')">
-                    <div class="w-2 h-2 rounded-full bg-slate-700"></div>
-                    <div>
-                        <div class="text-blue-400 font-mono text-[10px] mb-0.5">16:30</div>
-                        <h3 class="font-bold text-base">속초해수욕장</h3>
-                        <p class="text-gray-500 text-xs">카페 앞 해변 산책</p>
-                    </div>
-                </div>
+    <main id="candidate-view" class="hidden px-5 space-y-4">
+        <h2 class="text-xs font-bold text-gray-500 uppercase ml-1">Visit Candidates</h2>
+        <div id="candidate-list" class="space-y-3">
+            <div class="ios-card p-4">
+                <input type="text" placeholder="장소 이름 (예: 봉포머구리집)" class="font-bold">
+                <input type="text" placeholder="네이버플레이스 링크 (자동연결)" class="text-xs text-blue-500 mt-1 url-input">
             </div>
-        </section>
+        </div>
+    </main>
+
+    <div class="fab text-white text-2xl" onclick="addNewItem()">
+        <i class="fa-solid fa-plus"></i>
     </div>
 
-    <div class="mt-12 bg-zinc-900 p-5 rounded-3xl">
-        <textarea class="w-full bg-transparent text-sm text-gray-400 focus:outline-none min-h-[80px]" placeholder="터치하여 여행 메모를 남기세요."></textarea>
-    </div>
-    
-    <p class="mt-8 text-center text-[10px] text-gray-800 font-mono uppercase tracking-widest">Tap card to check done</p>
+    <nav class="fixed bottom-0 left-0 w-full glass bg-white/80 dark:bg-black/80 border-t border-gray-800 flex justify-around py-3 pb-8">
+        <button onclick="switchTab('schedule')" class="tab-btn active flex flex-col items-center gap-1">
+            <i class="fa-solid fa-calendar-days text-xl"></i>
+            <span class="text-[10px]">일정</span>
+        </button>
+        <button onclick="switchTab('candidate')" class="tab-btn flex flex-col items-center gap-1">
+            <i class="fa-solid fa-map-location-dot text-xl"></i>
+            <span class="text-[10px]">방문후보</span>
+        </button>
+    </nav>
+
+    <script>
+        function switchTab(tab) {
+            const sched = document.getElementById('schedule-view');
+            const candi = document.getElementById('candidate-view');
+            const title = document.getElementById('page-title');
+            const btns = document.querySelectorAll('.tab-btn');
+
+            if(tab === 'schedule') {
+                sched.classList.remove('hidden');
+                candi.classList.add('hidden');
+                title.innerText = "Schedule";
+                btns[0].classList.add('active');
+                btns[1].classList.remove('active');
+            } else {
+                sched.classList.add('hidden');
+                candi.classList.remove('hidden');
+                title.innerText = "Candidates";
+                btns[1].classList.add('active');
+                btns[0].classList.remove('active');
+            }
+        }
+
+        // 네이버 플레이스 링크 감지 및 이동 기능
+        document.addEventListener('input', (e) => {
+            if(e.target.classList.contains('url-input') && e.target.value.includes('naver.me')) {
+                if(confirm('네이버 지도로 이동하시겠습니까?')) {
+                    window.open(e.target.value, '_blank');
+                }
+            }
+        });
+
+        // 실시간 동기화 참고: 
+        // 실제 운영 시에는 이 부분에 Firebase Realtime DB 스크립트를 추가하여 
+        // value가 바뀔 때마다 db.set()을 호출하면 전 세계 어디서든 동기화됩니다.
+    </script>
 </body>
 </html>
